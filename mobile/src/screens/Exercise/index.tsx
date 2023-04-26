@@ -36,7 +36,7 @@ export function Exercise({ route: { params }, navigation}: BottomTabScreenProps<
     async function handleExerciseHistoryRegister(){
         try {
             setExrciseIsRegistering(true)
-            await api.post('/history', { exercise_id: params })
+            await api.post('/history', { exercise_id: params.id })
             
             Toast.show({
                 placement: 'top',
@@ -47,7 +47,7 @@ export function Exercise({ route: { params }, navigation}: BottomTabScreenProps<
             })
             
             setTimeout(() => {
-                navigation.navigate('Home')
+                navigation.navigate('History')
             },2000)
         } catch (error) {
             const isAppError = error instanceof AppError

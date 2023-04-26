@@ -7,7 +7,7 @@ import { Control } from "react-hook-form/dist/types";
 
 
 interface PasswordTextInputControlledProps extends TextInputProps {
-    name: 'password' | 'confirmPassword' | 'newPassword' ,
+    name: 'password' | 'confirmPassword' | 'newPassword' | 'old_password' ,
     control: Control<userLoggedSchemaData | any>
 }
 

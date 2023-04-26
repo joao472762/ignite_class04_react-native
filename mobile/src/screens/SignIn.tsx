@@ -46,7 +46,7 @@ export function SignIn({ navigation}: NativeStackScreenProps<AuthRoutesParamList
         try {
             await signIn(email, password)
         } catch(error){
-            console.log('cheguei e sigin')
+          
             const isAppError = error instanceof(AppError)
             const title = isAppError ? error.message : 'Error no Sevidor'
 

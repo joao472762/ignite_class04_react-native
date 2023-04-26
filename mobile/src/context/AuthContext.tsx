@@ -1,10 +1,11 @@
 import { createContext, ReactNode, useEffect, useState } from "react";
-import AsyncStorage from '@react-native-async-storage/async-storage'
+
 import {UserDTO} from '@dtos/userDTOS'
 import { api } from "@libs/axios";
-import { AppError } from "@utils/AppError";
+
 import { getUserInLocalStorage, SaveUserInLocalSotorage, removeUserInLocalStorage } from "@storage/StorageUser";
-import { getAuthTokenInLocalStorage, removeTokenInLocalStorage, SaveTokenInLocalStorage } from "@storage/StorageAuthToken";
+import { getAuthTokensInLocalStorage, removeTokenInLocalStorage, SaveTokensInLocalStorage } from "@storage/StorageAuthToken";
+import { AuthTokens } from "@dtos/authTokensDTO";
 
 
 
@@ -13,7 +14,7 @@ interface AuthContextType  {
     signOut: () => Promise<void>,
     user: UserDTO ,
     localStorageIsLoading: boolean
-    createUser: (user: UserDTO) => Promise<void>;
+    upadateUserProfile: (userData: UserDTO) => Promise<void>
     signIn: (email: string, password: string) => Promise<void>,
 
 
@@ -26,6 +27,7 @@ interface AuthContextProviderProps {
 
 interface SeesionData  {
     token: string
+    refresh_token: string
     user: UserDTO
 }
 
@@ -35,6 +37,7 @@ export const AuthContext = createContext({} as AuthContextType)
 
 export function AuthContextProvider({children }: AuthContextProviderProps){
     const [user, setUser] = useState<UserDTO>({} as UserDTO)
+   
     const [localStorageIsLoading, setLocalStorageIsLoading] = useState(true)
 
  
@@ -44,14 +47,19 @@ export function AuthContextProvider({children }: AuthContextProviderProps){
         setUser(userData)
         
     }
+
+    async function upadateUserProfile(userData: UserDTO) {
+        setUser(userData)
+        await SaveUserInLocalSotorage(userData)
+    }
     
-    async function storageUserAndTokenSave(userData: UserDTO, token: string){
+    async function storageUserAndTokensSave(userData: UserDTO, authTokens: AuthTokens){
         try {
             setLocalStorageIsLoading(true)
            
 
             await SaveUserInLocalSotorage(userData )
-            await SaveTokenInLocalStorage(token)
+            await SaveTokensInLocalStorage(authTokens)
             
         } catch (error) {
             throw error
@@ -68,12 +76,12 @@ export function AuthContextProvider({children }: AuthContextProviderProps){
                 password,
             })
 
-            const {user,token} = response.data
+            const { user, token, refresh_token} = response.data
 
-            if(!user && !token) return;
+            if (!user && !token && !refresh_token) return;
 
             userAndTokenUpdate(user, token)
-            await storageUserAndTokenSave(user, token)
+            await storageUserAndTokensSave(user, { refresh_token, token })
             
             
         } catch (error) {
@@ -95,21 +103,18 @@ export function AuthContextProvider({children }: AuthContextProviderProps){
             setLocalStorageIsLoading(false)
         }
     }
-    async function createUser(user: UserDTO) {
-        setUser(user)
-        SaveUserInLocalSotorage(user)
-    }
-
+    
     async function fetchUserDataInLocalStorage(){
         try {
             setLocalStorageIsLoading(true)
 
             const userResponse = await getUserInLocalStorage()
-            const tokenResponse = await getAuthTokenInLocalStorage()
-             
-            if(!tokenResponse && !userResponse) return;
+            const tokensResponse = await getAuthTokensInLocalStorage()
+              
+            if (!tokensResponse.refresh_token &&  !tokensResponse.refresh_token && !userResponse) return;
+            const { refresh_token, token} = tokensResponse
             
-            userAndTokenUpdate(userResponse, tokenResponse as string)
+            userAndTokenUpdate(userResponse, token)
 
         } catch (error) {
             console.error(error)   
@@ -123,14 +128,22 @@ export function AuthContextProvider({children }: AuthContextProviderProps){
         fetchUserDataInLocalStorage()
     }, [])
 
+    useEffect(() => {
+        const subscribe = api.registerInterceptTokenManager(signOut)
+        return () => {
+            subscribe()
+        }
+    }, [signOut])
+
 
     return (
         <AuthContext.Provider value={{ 
             user, 
             localStorageIsLoading, 
             signIn,
+            upadateUserProfile,
             signOut,
-            createUser
+            
         }}>
             {children}
         </AuthContext.Provider>

@@ -19,21 +19,35 @@ import { TextInputControlled } from "@components/Form/TextInput";
 import { PasswordTextInputControlled } from "@components/Form/PasswordTextInputControlled";
 import { PasswordRegex } from "@utils/Regex";
 import { useAuth } from "@hooks/useAuth";
+import { api } from "@libs/axios";
+import { AppError } from "@utils/AppError";
 
 const { Regex: passWordRegex, passwordErrorMessage } = PasswordRegex
 
 const redifineUserProfileDataSchema = z.object({
     name: z.string().min(3, 'O nome Tem que possuir mais de 2 letras'),
-    password: z.string().regex(passWordRegex,passwordErrorMessage),
-    newPassword: z.string().min(3, 'A nova senha deve possuir 4 ou mais caracteres'),
+    old_password: z.string().optional(),
+    password: z.string().optional()
+}).superRefine((schemaData, context) => {
+    const {password} = schemaData
+    if (!!password?.trim() && !passWordRegex.test(password)) {
+        
+        context.addIssue({
+            
+            code: z.ZodIssueCode.custom,
+            path: ["password"],
+            message: passwordErrorMessage,
+        })
+    }
 })
+
 
 type redifineUserProfileDataSchemaType = z.infer<typeof redifineUserProfileDataSchema>
 
 export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'Profile'>){
-    const {user} = useAuth()
+    const { user, upadateUserProfile} = useAuth()
     const [photoIsLoading, setPhotoIsLoading] = useState(true)
-    const [userAvatar, setUserAvatar] = useState<string| undefined>(user?.avatar);
+    const [userAvatar, setUserAvatar] = useState<string | undefined>(`${api.defaults.baseURL}/avatar/${user.avatar}`);
 
     const toast = useToast()
 
@@ -62,8 +76,8 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
     
             if (imageResponse.canceled || !imageResponse.assets[0].uri ) return;
 
-            const imageSelected = imageResponse.assets[0].uri
-            const photoInfo = await FileSystem.getInfoAsync(imageSelected)
+            const imageSelected = imageResponse.assets[0]
+            const photoInfo = await FileSystem.getInfoAsync(imageSelected.uri)
 
             if(photoInfo.exists && (photoInfo.size  / 1024 /1024 ) >    5) {
                 return toast.show({
@@ -75,8 +89,29 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
                 })
                 
             }
-            setUserAvatar(photoInfo.uri)
+            const fileExtension = imageSelected.uri.split('.').pop()
 
+            const userNameWithoutSpaces = user.name.trim().replaceAll(' ','').toLowerCase()
+
+            const photoFile =  {
+                name: `${userNameWithoutSpaces}.${fileExtension}`,
+                uri: imageSelected.uri,
+                type: `${imageSelected.type}/${fileExtension}`
+            }
+           
+            const userPhotUploadForm =  new FormData();
+            userPhotUploadForm.append('avatar', photoFile as any)
+                 
+            const avatarUpdatedResponse = await api.patch<{avatar: string}>('/users/avatar', userPhotUploadForm,{
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
+            })
+
+            const userDataUpdated = user
+            userDataUpdated.avatar = avatarUpdatedResponse.data.avatar
+            setUserAvatar(imageSelected.uri)
+            upadateUserProfile(userDataUpdated)
             
         } catch (error) {
             console.log(error)
@@ -86,12 +121,42 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
         }
     }
 
-    function handleRedifineUserProfile(formData: redifineUserProfileDataSchemaType){
+    async function handleRedifineUserProfile(formData: redifineUserProfileDataSchemaType){
+        try {
+            const { old_password, password, name} = formData
+            console.log(formData)
+            await api.put('/users',{
+                name,
+                password, 
+                old_password,
+            })
 
-       const {name} = formData
-       
-      
-       navigation.navigate('Home')
+            const userDataUpdated = user
+            userDataUpdated.name = name
+
+            await upadateUserProfile(userDataUpdated)
+            navigation.navigate('Home')
+
+            Toast.show({
+                title: 'Perfil atualizado com sucesso',
+                backgroundColor: 'green.500',
+                placement: 'top',
+                paddingX: '3',
+                
+
+
+            })
+        } catch (error) {
+            const isAppError = error instanceof AppError
+
+            const title = isAppError ? error.message : 'Falha ao atualizar o perfil, tente novamente mais tarde'
+            Toast.show({
+                title,
+                placement: 'top',
+                backgroundColor: 'red.400'
+
+            })      
+        }
 
     }
     const PhotoSize = 33
@@ -176,8 +241,8 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
 
                             <PasswordTextInputControlled
                                 control={control}
-                                name='password'
-                                error={errors.password?.message}
+                                name='old_password'
+                                error={errors.old_password?.message}
                                 
                                 marginTop={4}
                                 placeholder={'Senha antiga'}
@@ -187,8 +252,8 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
 
                             <PasswordTextInputControlled
                                 control={control}
-                                name='newPassword'
-                                error={errors.newPassword?.message}
+                                name='password'
+                                error={errors.password?.message}
                                 marginTop={4}
                                 placeholder={'Nova Senha'}
                                 backgroundColor={'gray.600'}
@@ -200,6 +265,7 @@ export function Profile({navigation}: BottomTabScreenProps<AppRoutesParamList,'P
                         </Box>
                         <Box marginTop={'auto'} >
                             <Button
+                                isLoading={isSubmitting}
                                 onPress={handleSubmit(handleRedifineUserProfile)}
                                 marginTop={4}
                             >

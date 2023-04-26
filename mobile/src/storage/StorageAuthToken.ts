@@ -1,14 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { AppError } from "@utils/AppError"
 import { STORAGE_TOKEN_KEY } from "."
+import { AuthTokens } from "@dtos/authTokensDTO"
 
-export async function SaveTokenInLocalStorage(token:string) {
-    await AsyncStorage.setItem(STORAGE_TOKEN_KEY, token)
+
+
+export async function SaveTokensInLocalStorage({refresh_token,token}: AuthTokens) {
+    const authTokensInLocalStorage = JSON.stringify({token,refresh_token})
+    await AsyncStorage.setItem(STORAGE_TOKEN_KEY, authTokensInLocalStorage)
 }
 
-export async function getAuthTokenInLocalStorage(){
-    const token = await AsyncStorage.getItem(STORAGE_TOKEN_KEY)
-    return token
+export async function getAuthTokensInLocalStorage(){
+    const authTokensResponse = await AsyncStorage.getItem(STORAGE_TOKEN_KEY)
+    const authTokens: AuthTokens = authTokensResponse ? JSON.parse(authTokensResponse) : {}
+
+    return authTokens as AuthTokens
 
 }
 

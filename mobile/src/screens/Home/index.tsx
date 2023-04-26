@@ -18,7 +18,6 @@ import { ExerciseDTO } from "@dtos/exerciseDTOS";
 import { Loader } from "@components/Loader";
 import { ExercisesSkeleton } from "./components/ExercisesSkeleton";
 
-type musclesProps = 'constas'| 'bicipes'| 'ombro'| 'pernas'
 
 type muscleGroupsProps   = string[]
 
@@ -70,7 +69,7 @@ export function Home(route: BottomTabScreenProps<AppRoutesParamList, 'Home'>){
     return (
         <VStack flex={1}>
             <HomeHeader
-                avatarUrl={user?.avatar}
+                avatarUrl={`${api.defaults.baseURL}/avatar/${user.avatar}`}
                 greeting={'Olá'}
                 userName={user?.name }
             />

@@ -19,7 +19,7 @@ import {z} from 'zod'
 import { TextInputControlled } from '@components/Form/TextInput'
 import { PasswordTextInputControlled } from '@components/Form/PasswordTextInputControlled'
 import { PasswordRegex } from '@utils/Regex'
-import { api, AxiosErros } from '@libs/axios'
+import { api} from '@libs/axios'
 import axios from 'axios'
 import { AppError } from '@utils/AppError'
 import { useAuth } from '@hooks/useAuth'
@@ -67,6 +67,7 @@ export function SignUp({navigation}: NativeStackScreenProps<AuthRoutesParamList,
                 email,
                 password,
             })
+            console.log('foi ')
 
             
             signIn(email,password)

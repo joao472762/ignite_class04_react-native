@@ -1,50 +1,60 @@
 import { Header } from "@components/Header";
 import { Heading } from "@components/Heading";
 import { Text } from "@components/Text";
+import { api } from "@libs/axios";
 import { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import { useFocusEffect } from "@react-navigation/native";
 import { AppRoutesParamList } from "@routes/appRoutes";
 import { FlatList, SectionList, VStack } from "native-base";
+import { useCallback, useState } from "react";
+import { useQuery } from "react-query";
+import { HistoryDTO } from "@dtos/historyDTO";
 import { HistoryCard } from './components/HistoryCard'
 import { HistoryListEmpty } from "./components/HistoryListEmpty";
+import { Loader } from "@components/Loader";
 
 
 export function History(route: BottomTabScreenProps<AppRoutesParamList, 'History'>){
-    const history = [[0, 2, 3], [0, 2, 3], [0, 2, 3]]
-    const exercises = [
-        {
-            title: '02/02/2021',
-            data: ['Puxada frontal', 'Remada unilateral', 'Risotto'],
-        },
-        {
-            title: '02/02/2021',
-            data: ['Puxada frontal', 'Remada unilateral', 'Risotto'],
+    const [history, setHistory] = useState<HistoryDTO[]>([])
+    const [isFetchingHistory, setIsFetchingHistory] = useState(false)
 
-        },
-        {
-            title: '02/02/2021',
-            data: ['Puxada frontal', 'Remada unilateral', 'Risotto'],
-        },
-        {
-            title: '02/02/2021',
-            data: ['Puxada frontal', 'Remada unilateral', 'Risotto'],
-
-        },
+    
+    async function fetchHistory(){
+        try {
+            setIsFetchingHistory(true)
+            const response = await api.get<HistoryDTO[]>('/history')
+            setHistory(response.data)
+            
+        } catch (error) {
+            
+        }
+        finally{
+            setIsFetchingHistory(false)
+        }
         
-    ];
+    }
+  
+    
+    useFocusEffect(useCallback(() => {
+        fetchHistory()
+    }, []))
+
+    if(isFetchingHistory) return <Loader/>
 
     return (
         <VStack flex={1}>
             <Header title="Histórico de Exercícios"/>
             <VStack flex={1} paddingX={8}>
                 <SectionList
-                     sections={exercises}
-                     keyExtractor={item => item}
-                     renderItem={({item}) => 
+                    sections={history}
+                     keyExtractor={item =>String( item.id)}
+                     renderItem={({item:exercise}) => 
                         (
-                            <HistoryCard 
-                                exercise={item}
-                                muscleGroup={'constas'}
-                                timeConclusion={'18:05'}
+                            <HistoryCard
+                                
+                                exercise={exercise.name}
+                                muscleGroup={exercise.group}
+                                timeConclusion={exercise.hour}
                             />
                         )
                     }
@@ -61,7 +71,7 @@ export function History(route: BottomTabScreenProps<AppRoutesParamList, 'History
                     ListEmptyComponent={<HistoryListEmpty/>}
                     contentContainerStyle={{
                         paddingBottom: 20,
-                        flexGrow: exercises? 1 : 0
+                        flexGrow: history? 1 : 0
                     }}
                     showsVerticalScrollIndicator={false}
 
